@@ -24,7 +24,7 @@
 |---|---|
 | **猫爪（catPaw）源（MiraPlay 输入框只认这个）** | `https://raw.githubusercontent.com/JRMargin/tvbox-config/main/index.js.md5` |
 
-- **不要把加速地址填进去**：`https://gh-proxy.com/https://raw.githubusercontent.com/.../index.js.md5` 这种路径里又套一层完整 URL 的写法，会被 MiraPlay 的格式校验判为非法，提示「格式错误，请输入catPawopen源」。猫爪源只接受形如 `https://域名/.../index.js.md5` 的地址（或 `github://<PAT>@github.com/<user>/<repo>/<branch>/index.js.md5`）。
+- 猫爪（catPaw）源只接受以 `.js.md5` 结尾的地址（`https://域名/.../index.js.md5`，或 `github://<PAT>@github.com/<user>/<repo>/<branch>/index.js.md5`）。**填 JSON（如 `miraplay.json`）会直接报「格式错误，请输入catPawopen源」**；社区里 `https://ghfast.top/https://raw.githubusercontent.com/.../index.js.md5` 这类带加速前缀的嵌套写法是可用的，若某条加速地址被判格式错误，换下面这条纯 raw 即可。
 - jsDelivr 对该文件也不可用：`.md5` 返回 **403 Forbidden**（jsDelivr 会拦 `.md5`、`.jar` 这类后缀），只有 `index.js` 本体能取到。
 - 校验值 `3bd449f0fe7221060113d785076c73f7`，体积 6643598 B，镜像文件与源站 md5 完全一致。
 - 实测（云主机 Node 22 跑镜像文件）：`CatVodSpiderios listening on http://127.0.0.1:9988`。
