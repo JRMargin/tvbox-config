@@ -35,6 +35,22 @@
 - 该 js 只有在文件名以 `index.js` 结尾时才会自启（内部用 `process.argv[1]` 做正则匹配），改名会静默退出、无任何输出。
 - jsDelivr 拉这个 6.6 MB 文件多次连接中断，未列入推荐地址。
 
+### MiraPlay 配置快照（`miraplay.json`）
+
+`miraplay.json` 是从上面那份 spider 的 `/config` 接口原样抓下来的配置（2026-11-23 快照），与源站输出**字节级一致**（md5 `59f1ed9ad271e88e2056f838eb141223`，21162 B），未做任何改写：
+
+- 走加速：`https://gh-proxy.com/https://raw.githubusercontent.com/JRMargin/tvbox-config/main/miraplay.json`
+- 直连：`https://raw.githubusercontent.com/JRMargin/tvbox-config/main/miraplay.json`
+
+内容：`video` 分栏 **97 个站点**（96 个 type3 + 1 个 type4 推送），另有 `read`/`comic`/`music`/`pan` 四个分栏（源站当前为空）和 3 套主题配色 `color`。站点 key 形如 `nodejs_wogg`，`api` 为 `/spider/<key>/3`。
+
+使用前提与限制：
+
+- **必须与同一份 spider 配套**。配置里 `api` 是本地相对路径（`/spider/<key>/3`），由 spider 在本机注册成 `/spider/<key>/<type>/home|category|detail|search|play` 这类 POST 路由；只挂配置、不加载 `index.js`，站点一个都出不来。
+- 实测：`POST /spider/wogg/3/home` 返回 `HTTP 200 42180B`，`class` 里是「玩偶电影／玩偶剧集」等真实分类；同批测试里 `douban` 的 home 返回 403（该站上游拒采，非链路问题）。
+- 这是**冻结快照**：源站站点会变（其中一条站名带当天日期，快照里固定为 `日期:20261123`），要最新列表就得重新从 `/config` 抓。
+- 站点内容仍依赖厂商远程资源（`upload.baicanuc.cn` 系列 txt 与 `oss4liview.moji.com` 的站点配置，后者 2026-11-23 为 503），本仓库不做二次托管。
+
 ## 关于 spider.jar 的分发（重要）
 
 97 个 csp 源（网盘 4K、网盘直连、网盘搜索、动漫、短剧、磁力等）全部依赖 `spider.jar` 加载成功；jar 加载失败时，只剩 10 个不依赖 jar 的苹果 CMS 能返回数据。
