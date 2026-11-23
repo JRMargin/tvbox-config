@@ -22,9 +22,10 @@
 
 | 用途 | 地址 |
 |---|---|
-| 订阅/接口地址（推荐，走加速） | `https://gh-proxy.com/https://raw.githubusercontent.com/JRMargin/tvbox-config/main/index.js.md5` |
-| 直连 raw | `https://raw.githubusercontent.com/JRMargin/tvbox-config/main/index.js.md5` |
+| **猫爪（catPaw）源（MiraPlay 输入框只认这个）** | `https://raw.githubusercontent.com/JRMargin/tvbox-config/main/index.js.md5` |
 
+- **不要把加速地址填进去**：`https://gh-proxy.com/https://raw.githubusercontent.com/.../index.js.md5` 这种路径里又套一层完整 URL 的写法，会被 MiraPlay 的格式校验判为非法，提示「格式错误，请输入catPawopen源」。猫爪源只接受形如 `https://域名/.../index.js.md5` 的地址（或 `github://<PAT>@github.com/<user>/<repo>/<branch>/index.js.md5`）。
+- jsDelivr 对该文件也不可用：`.md5` 返回 **403 Forbidden**（jsDelivr 会拦 `.md5`、`.jar` 这类后缀），只有 `index.js` 本体能取到。
 - 校验值 `3bd449f0fe7221060113d785076c73f7`，体积 6643598 B，镜像文件与源站 md5 完全一致。
 - 实测（云主机 Node 22 跑镜像文件）：`CatVodSpiderios listening on http://127.0.0.1:9988`。
 
@@ -38,6 +39,8 @@
 ### MiraPlay 配置快照（`miraplay.json`）
 
 `miraplay.json` 是从上面那份 spider 的 `/config` 接口原样抓下来的配置（2026-11-23 快照），与源站输出**字节级一致**（md5 `59f1ed9ad271e88e2056f838eb141223`，21162 B），未做任何改写：
+
+> **注意：这份 JSON 不能填进 MiraPlay 的「猫爪源」输入框**——那个位置只接受 `.js.md5` 形式的 catPaw 源，填 JSON 会报「格式错误，请输入catPawopen源」。`miraplay.json` 仅供能直接吃 TVBox 系 JSON 的壳读取/查看站点清单用。
 
 - 走加速：`https://gh-proxy.com/https://raw.githubusercontent.com/JRMargin/tvbox-config/main/miraplay.json`
 - 直连：`https://raw.githubusercontent.com/JRMargin/tvbox-config/main/miraplay.json`
