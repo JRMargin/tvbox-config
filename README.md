@@ -16,6 +16,33 @@
 
 > 三个配置文件的 107 个站点完全相同，**唯一区别是 `spider` 字段**。
 
+## 为什么 raw / 加速链接会「源加载失败」（2026-11-23 定位）
+
+同一份字节（md5 `3bd449f0fe7221060113d785076c73f7`）在不同站点上有三种结果：
+
+| 站点 | Content-Encoding | Content-Length | App 结果 |
+|---|---|---|---|
+| 原厂 `cat.999888123.xyz` → `oss4liview.moji.com/...jpg` | 无 | 6643598 | **能加载** |
+| `raw.githubusercontent.com` | gzip | 1910955 | 源加载失败 |
+| `ghfast.top` / `gh-proxy.com` / `cdn.jsdelivr.net` | gzip / br | 1910955 / 1873681 | 源加载失败 |
+| `9280.kstore.vip`（牛二） | gzip | 分块 | 源加载失败 |
+
+结论：这个 App 的取文件逻辑不处理压缩传输，把压缩后的字节直接拿去算 md5，与 `.md5` 内容对不上，于是「源加载失败」。凡是会 gzip/br 的托管都过不去；原厂那条能活是因为它最终落到一张 `image/jpeg` 静态文件，服务器不压缩。
+
+### 解决办法：走 GitHub Release 附件直链（二进制、不压缩）
+
+Release 附件以 `application/octet-stream` 下载，`Content-Encoding` 为空，正好满足这个 App 的要求，且支持直连（实测 1.6 s 拉完 6643598 B）：
+
+| 用途 | 地址 |
+|---|---|
+| **原样镜像（与原厂同字节，推荐先试）** | `https://github.com/JRMargin/tvbox-config/releases/download/src-v1/index.js.md5` |
+| catPaw（websiteBundle 包装版，备选） | `https://github.com/JRMargin/tvbox-config/releases/download/catpaw-v1/index.js.md5` |
+
+- `src-v1` 附件：`index.js` 6643598 B（md5 `3bd449f0fe7221060113d785076c73f7`）、`index.js.md5` 32 B
+- `catpaw-v1` 附件：`index.js` 6874383 B（md5 `902d95fce3e174f82d408818269a43ca`）、`index.js.md5` 32 B
+- 实测响应头：`content-type: application/octet-stream`、`content-length` 正确、无 `content-encoding`
+- App 会按 `.md5` 去掉后缀去取同名 `index.js`，两个附件名正好对应
+
 ## iOS（MiraPlay）专用 spider 镜像
 
 原链接 `http://wexfnw:wexfnw@cat.999888123.xyz/index.js.md5` 的 `.md5` 只是 32 字节校验值（`3bd449f0fe7221060113d785076c73f7`），真正的资源是同目录的 `index.js`——**CatVodSpider 的 iOS 版 spider**（6.6 MB，启动后监听 `127.0.0.1:9988`，方案标识 `js2p://_WEB_`）。已原样镜像到本仓库根目录，文件名与校验方式保持不变，可直接替换原链接：
