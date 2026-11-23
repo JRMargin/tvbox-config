@@ -31,7 +31,7 @@
 
 ### 解决办法：走 GitHub Release 附件直链（二进制、不压缩）
 
-Release 附件以 `application/octet-stream` 下载，`Content-Encoding` 为空，正好满足这个 App 的要求，且支持直连（实测 1.6 s 拉完 6643598 B）：
+Release 附件以 `application/octet-stream` 下载，`Content-Encoding` 为空，正好满足这个 App 的要求，且支持直连（云主机 1.6 s、国内家用宽带 63.1 s 拉完 6643598 B，均无压缩）：
 
 | 用途 | 地址 |
 |---|---|
