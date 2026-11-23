@@ -40,6 +40,27 @@
 - 该 js 只有在文件名以 `index.js` 结尾时才会自启（内部用 `process.argv[1]` 做正则匹配），改名会静默退出、无任何输出。
 - jsDelivr 拉这个 6.6 MB 文件多次连接中断，未列入推荐地址。
 
+### MiraPlay（catPaw）兼容源：`catpaw/index.js.md5`
+
+根目录那份 `index.js` 是**自启型 Node 服务端**（靠 `process.argv[1]` 匹配文件名启动）。App 侧的表现是：下载成功、md5 校验也做了，但随后「源加载失败」——因为它拿不到任何可执行入口。
+
+对照社区里标为 MiraPlay 可用的「豆儿」源（`ghfast.top/.../douer/index.js.md5`，9.4 MB）发现差别在入口约定：它把整包代码包进 `globalThis.websiteBundle = function(){ return "(function(){const exports={};const module={exports}; <code> })();" }`，由 App 取值后自己 eval。我们这份没有 `websiteBundle`（全文 0 次命中），只有 `catServerFactory`（3 次）和 `process.argv` 自启。
+
+据此做了 `catpaw/` 版本，未改任何 spider 逻辑：
+
+- 外层按同一约定提供 `globalThis.websiteBundle`，返回一个 IIFE 字符串，内部补齐 `const exports = {}; const module = { exports };`。
+- 把自启守卫 `MTr()&&Rtt().catch(...)` 改成直接 `Rtt().catch(...)`（原守卫要求 `process.argv[1]` 以 `index.js` 结尾，在 App 的 eval 环境里永远不成立）。
+- 其余字节全部保留；md5 重新计算。
+
+| 用途 | 地址 |
+|---|---|
+| **MiraPlay / catPaw 源（推荐）** | `https://ghfast.top/https://raw.githubusercontent.com/JRMargin/tvbox-config/main/catpaw/index.js.md5` |
+| 直连 raw（实测 135.8 s，慢） | `https://raw.githubusercontent.com/JRMargin/tvbox-config/main/catpaw/index.js.md5` |
+
+- md5 `902d95fce3e174f82d408818269a43ca`，体积 6874383 B；raw 与 ghfast 回读 md5 一致，ghfast 9.5 s 下完，raw 135.8 s。
+- 模拟 App 行为验证（`eval(websiteBundle())` 后 eval 返回值）：1 s 内 `/health` 返回 `{"ok":true,"name":"CatVodSpiderios"}`，`/config` 返回 21162 B、97 个站点，与原快照逐项比对**仅端口字段不同**（`danmuSearchUrl` 里的 9987/9988）。
+- 该版本仅适配「先取值再 eval」的运行时；如果某个壳是自己 `require`/执行文件的形式启动，仍用根目录那份 `index.js`。
+
 ### MiraPlay 配置快照（`miraplay.json`）
 
 `miraplay.json` 是从上面那份 spider 的 `/config` 接口原样抓下来的配置（2026-11-23 快照），与源站输出**字节级一致**（md5 `59f1ed9ad271e88e2056f838eb141223`，21162 B），未做任何改写：
