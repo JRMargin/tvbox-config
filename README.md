@@ -16,6 +16,25 @@
 
 > 三个配置文件的 107 个站点完全相同，**唯一区别是 `spider` 字段**。
 
+## iOS（MiraPlay）专用 spider 镜像
+
+原链接 `http://wexfnw:wexfnw@cat.999888123.xyz/index.js.md5` 的 `.md5` 只是 32 字节校验值（`3bd449f0fe7221060113d785076c73f7`），真正的资源是同目录的 `index.js`——**CatVodSpider 的 iOS 版 spider**（6.6 MB，启动后监听 `127.0.0.1:9988`，方案标识 `js2p://_WEB_`）。已原样镜像到本仓库根目录，文件名与校验方式保持不变，可直接替换原链接：
+
+| 用途 | 地址 |
+|---|---|
+| 订阅/接口地址（推荐，走加速） | `https://gh-proxy.com/https://raw.githubusercontent.com/JRMargin/tvbox-config/main/index.js.md5` |
+| 直连 raw | `https://raw.githubusercontent.com/JRMargin/tvbox-config/main/index.js.md5` |
+
+- 校验值 `3bd449f0fe7221060113d785076c73f7`，体积 6643598 B，镜像文件与源站 md5 完全一致。
+- 实测（云主机 Node 22 跑镜像文件）：`CatVodSpiderios listening on http://127.0.0.1:9988`。
+
+注意事项：
+
+- 这份 js 只是 **spider 引擎**，本身不含站点清单；站点与网盘分享是它运行时远程拉取的（`upload.baicanuc.cn/ossfiles/1768320816/` 下的 `ioswex.txt`、`guangya.txt`、`api.txt`、`quarknew.txt`、`yidongnew.txt`、`baidunew.txt`，以及 `oss4liview.moji.com/...jpg` 站点配置）。这些文件仍在原厂商服务器上，本镜像不改变其归属，所以“专属”只到 spider 这一层。
+- 2026-11-23 实测：站点配置 `oss4liview.moji.com/thd_file/2026/10/27/08d97aca7cc67966a19d05d5ba3ff725.jpg` 返回 503，spider 日志为 `[RemoteWexConfig] site config failed: timeout of 10000ms exceeded`——**原链接当前也拿不到站点数据**，不是本地网络问题。
+- 该 js 只有在文件名以 `index.js` 结尾时才会自启（内部用 `process.argv[1]` 做正则匹配），改名会静默退出、无任何输出。
+- jsDelivr 拉这个 6.6 MB 文件多次连接中断，未列入推荐地址。
+
 ## 关于 spider.jar 的分发（重要）
 
 97 个 csp 源（网盘 4K、网盘直连、网盘搜索、动漫、短剧、磁力等）全部依赖 `spider.jar` 加载成功；jar 加载失败时，只剩 10 个不依赖 jar 的苹果 CMS 能返回数据。
