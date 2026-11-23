@@ -22,10 +22,14 @@
 
 | 用途 | 地址 |
 |---|---|
-| **猫爪（catPaw）源（MiraPlay 输入框只认这个）** | `https://raw.githubusercontent.com/JRMargin/tvbox-config/main/index.js.md5` |
+| **猫爪（catPaw）源（MiraPlay 输入框只认这个）** | `https://ghfast.top/https://raw.githubusercontent.com/JRMargin/tvbox-config/main/index.js.md5` |
+| 备用（ghfast 不通时） | `https://gh-proxy.com/https://raw.githubusercontent.com/JRMargin/tvbox-config/main/index.js.md5` |
+| 直连 raw（国内网络常拉不动 6.6 MB） | `https://raw.githubusercontent.com/JRMargin/tvbox-config/main/index.js.md5` |
 
 - 猫爪（catPaw）源只接受以 `.js.md5` 结尾的地址（`https://域名/.../index.js.md5`，或 `github://<PAT>@github.com/<user>/<repo>/<branch>/index.js.md5`）。**填 JSON（如 `miraplay.json`）会直接报「格式错误，请输入catPawopen源」**；社区里 `https://ghfast.top/https://raw.githubusercontent.com/.../index.js.md5` 这类带加速前缀的嵌套写法是可用的，若某条加速地址被判格式错误，换下面这条纯 raw 即可。
-- jsDelivr 对该文件也不可用：`.md5` 返回 **403 Forbidden**（jsDelivr 会拦 `.md5`、`.jar` 这类后缀），只有 `index.js` 本体能取到。
+- **为什么不要用 raw 直连**：2026-11-23 在深圳家用网络实测，raw 下 6643598 B 的 `index.js` 多次 120 s 超时未完成，App 端表现为「源加载失败」；`.md5` 只有 32 B 所以能秒回，问题只在大文件。同一时间 ghfast 9.7 s 拉完（≈668 KB/s）、gh-proxy 18.2 s（≈356 KB/s），三者 md5 均为 `3bd449f0fe7221060113d785076c73f7`。
+- jsDelivr 对该文件也不可用：`.md5` 返回 **403 Forbidden**（jsDelivr 会拦 `.md5`、`.jar` 这类后缀），只有 `index.js` 本体能取到（且实测仅 70 KB/s）。
+- 另外实测不可用：`cdn.statically.io`、`raw.githack.com`、`github.moeyy.xyz` 均连接超时；`ghproxy.net` 虽能取全（6643598 B）但仅 47 KB/s、耗时 138 s，不推荐。
 - 校验值 `3bd449f0fe7221060113d785076c73f7`，体积 6643598 B，镜像文件与源站 md5 完全一致。
 - 实测（云主机 Node 22 跑镜像文件）：`CatVodSpiderios listening on http://127.0.0.1:9988`。
 
