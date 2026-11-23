@@ -1,98 +1,108 @@
-# TVBox / 影视仓 通用点播聚合源
+# TVBox / 影视仓 配置 + MiraPlay（猫爪 catPaw）源
 
-一份配置同时适配 **TVBox** 与 **影视仓**（FongMi 系）空壳。仅使用跨壳通用的 csp（type3）与苹果 CMS（type1/type0），已剔除 `.py`、drpy、本地 GoProxy 等非通用源。
+本仓库同时提供两件事：
 
-当前共 **107 个站点**：type3（csp）97 个、type1 苹果 CMS 9 个、type0 1 个。
+1. **MiraPlay（iPhone）能加载的猫爪源**——`index.js` + `index.config.js` 共四个文件（含两个 `.md5`），已在 iPhone 上实测加载成功。见 [一、MiraPlay / 猫爪源](#一miraplay--猫爪catpaw源)。
+2. **TVBox / 影视仓通用点播聚合配置**——`config.json` 系列，107 个站点。见 [二、TVBox / 影视仓 配置](#二tvbox--影视仓-配置)。
 
-## 订阅地址（按网络情况选一条）
+---
 
-| 配置 | 适用情况 | 地址 |
+## 一、MiraPlay / 猫爪（catPaw）源
+
+### 1. 现在能用的地址（按优先级）
+
+| 优先级 | 地址 | 实测结果 |
 |---|---|---|
-| `config.json` | 能直连 GitHub 的网络（raw，spider 也走 raw） | `https://raw.githubusercontent.com/JRMargin/tvbox-config/main/config.json` |
-| `config.json`（jsDelivr） | 配置走 CDN 加速，但 spider 仍走 raw | `https://cdn.jsdelivr.net/gh/JRMargin/tvbox-config@main/config.json` |
-| `config-cdn.json`（推荐） | 电视直连 raw 不稳；spider 走 gh-proxy 加速 | `https://gh-proxy.com/https://raw.githubusercontent.com/JRMargin/tvbox-config/main/config-cdn.json` |
-| `config-cdn.json`（jsDelivr） | 同上，配置文件本身走 CDN | `https://cdn.jsdelivr.net/gh/JRMargin/tvbox-config@main/config-cdn.json` |
-| `config-md5.json` | 壳要求 spider 带 md5 校验才加载 | `https://gh-proxy.com/https://raw.githubusercontent.com/JRMargin/tvbox-config/main/config-md5.json` |
+| **首选** | `https://gh-proxy.com/https://github.com/JRMargin/tvbox-config/releases/download/src-v1/index.js.md5` | 6643598 B，3.4 s 拉完，无 `Content-Encoding`，**iPhone 加载成功** |
+| 备选（同字节） | `https://github.com/JRMargin/tvbox-config/releases/download/src-v1/index.js.md5` | **能加载**，国内家用宽带 63 s（慢但可用） |
+| 调试用（同一 Wi‑Fi） | `http://192.168.1.24:8080/index.js.md5` | 秒开；需本机跑临时 node 服务（`%TEMP%\miraplay_srv2.js`），关机即失效，不是长期方案 |
 
-> 三个配置文件的 107 个站点完全相同，**唯一区别是 `spider` 字段**。
+四个文件经代理均可达、且都不压缩（`index.js.md5` 32 B / `index.js` 6643598 B / `index.config.js.md5` 32 B / `index.config.js` 9809 B），md5 与校验值逐个对得上。
 
-## 为什么 raw / 加速链接会「源加载失败」（2026-11-23 定位）
+### 2. 决定性结论：必须是两个文件成对
 
-同一份字节（md5 `3bd449f0fe7221060113d785076c73f7`）在不同站点上有三种结果：
+猫爪源不是一个文件，是**一组**：
 
-| 站点 | Content-Encoding | Content-Length | App 结果 |
+```
+index.js              ← spider 引擎本体（6.6 MB）
+index.js.md5          ← 它的校验值（32 B）
+index.config.js       ← 站点配置文件（9809 B）
+index.config.js.md5   ← 它的校验值（32 B）
+```
+
+App 的实际请求顺序（2026-11-23 本机服务日志实录，UA `tvbox/2026062803 CFNetwork/3896.200.61 Darwin/27.2.0`）：
+
+```
+GET /index.js.md5          200
+GET /index.js              200（6.6 MB，下载完成）
+GET /index.config.js.md5   ← 之前这里是 404，App 随即报「源加载失败」
+GET /index.config.js
+```
+
+**只镜像 `index.js` 而漏掉 `index.config.js`，表现就是「能下载完、md5 也校验过，然后提示源加载失败」**——这正是 2026-11-23 之前反复失败的真正原因。补齐配置后立刻加载成功，与原厂链接行为一致。
+
+其余结论顺带定案：
+
+- 文件名不可改：js 内用 `process.argv[1]` 匹配 `/(?:^|[\\/])index\.js$/`，改名后静默退出、毫无输出。
+- 该 spider 是 **CatVodSpider 的 iOS 版**，启动后监听 `127.0.0.1:9988`，方案标识 `address.dynamic = "js2p://_WEB_"`。
+
+### 3. 文件指纹
+
+| 文件 | 大小 | md5 |
+|---|---|---|
+| `index.js` | 6643598 B | `3bd449f0fe7221060113d785076c73f7` |
+| `index.js.md5` | 32 B | 内容即上一行 |
+| `index.config.js` | 9809 B | `93f807174a2f253cdcf5ce9ee00f4c18` |
+| `index.config.js.md5` | 32 B | 内容即上一行 |
+
+四个文件与原厂（`cat.999888123.xyz`）同字节。原厂把 js 伪装成 `image/jpeg` 经 CDN 分发，本仓库改为 GitHub Release 附件（`application/octet-stream`），内容未改动。
+
+### 4. 为什么有些地址一律加载不了：压缩传输
+
+同一份字节、同样补齐了配置，不同托管结果不同：
+
+| 托管方式 | Content-Encoding | 传输字节 | App 结果 |
 |---|---|---|---|
-| 原厂 `cat.999888123.xyz` → `oss4liview.moji.com/...jpg` | 无 | 6643598 | **能加载** |
-| `raw.githubusercontent.com` | gzip | 1910955 | 源加载失败 |
-| `ghfast.top` / `gh-proxy.com` / `cdn.jsdelivr.net` | gzip / br | 1910955 / 1873681 | 源加载失败 |
-| `9280.kstore.vip`（牛二） | gzip | 分块 | 源加载失败 |
+| 原厂 `oss4liview.moji.com/...jpg` | 无 | 6643598 | 能加载 |
+| GitHub Release 附件（本仓库） | 无 | 6643598 | **能加载** |
+| 本机 node 服务（http） | 无 | 6643598 | **能加载** |
+| `raw.githubusercontent.com` | gzip | 1910955 | 源加载失败 / 超时 |
+| `ghfast.top` / `gh-proxy.com`（代理 raw） | gzip | 1910955 | 源加载失败 |
+| `ghproxy.net` 代理 raw | gzip | 1910955 | 源加载失败 |
+| `cdn.jsdelivr.net` | br / gzip | 1873681 | `.md5` 直接 403 |
 
-结论：这个 App 的取文件逻辑不处理压缩传输，把压缩后的字节直接拿去算 md5，与 `.md5` 内容对不上，于是「源加载失败」。凡是会 gzip/br 的托管都过不去；原厂那条能活是因为它最终落到一张 `image/jpeg` 静态文件，服务器不压缩。
+规律是：**能加载的都不压缩，加载失败的都压缩**。据此判断这个壳取文件后不做解压，把压缩字节直接拿去比对 md5，自然对不上。
 
-### 解决办法：走 GitHub Release 附件直链（二进制、不压缩）
+（说明：这是在真实托管之间做的对照，没有单独构造「同域名、压缩/不压缩」的受控实验，因此这条判定按「实测归纳」而非严格证明看待；实践上按它执行即可——选不压缩的托管。）
 
-Release 附件以 `application/octet-stream` 下载，`Content-Encoding` 为空，正好满足这个 App 的要求，且支持直连（云主机 1.6 s、国内家用宽带 63.1 s 拉完 6643598 B，均无压缩）：
+### 5. 报错对照表
 
-| 用途 | 地址 |
+| App 提示 | 真正原因 | 处理 |
+|---|---|---|
+| 格式错误，请输入catPawopen源 | 填了 JSON（如 `miraplay.json`），或地址不是 `.js.md5` 结尾 | 换 `.js.md5` 结尾的地址；JSON 是给 TVBox 系壳用的 |
+| 源加载失败（下载完成、校验也过了之后报） | 缺 `index.config.js` / `index.config.js.md5` | 用第 1 节里的成对地址，不要只镜像 js |
+| 源加载失败（很快报，几乎没等待） | 服务器压缩传输，或代理不通 | 换成 gh-proxy 代理 Release 附件那条 |
+| 长时间卡住然后失败 | 6.6 MB 没下完（raw 直连常见 120 s 超时） | 同上 |
+| 对比 md5 之后提示加载失败 | 同上，压缩导致校验失败，或配置侧 404 | 查服务器日志确认是否请求了 `index.config.js.md5` |
+
+### 6. 「专属」到什么程度
+
+- 已独立：spider 引擎、站点配置文件、校验值，全部落在本仓库，原链接失效也不影响加载。
+- 未独立：**站点清单与网盘分享仍是它运行时远程拉取的**——`upload.baicanuc.cn/ossfiles/1768320816/` 下的 `ioswex.txt`、`guangya.txt`、`api.txt`、`quarknew.txt`、`yidongnew.txt`、`baidunew.txt`，以及 `oss4liview.moji.com/thd_file/...jpg` 站点配置。这些仍在厂商服务器上，本仓库不改变其归属，也不做二次托管。
+- 站点数与原厂一致（97 个，见下方「MiraPlay 配置快照」）。2026-11-23 曾出现站点配置 `08d97aca...jpg` 返回 503、spider 日志 `[RemoteWexConfig] site config failed: timeout of 10000ms exceeded`——那是厂商侧波动，换链接解决不了。
+
+### 7. 已排除的两种猜测（避免以后重复踩）
+
+| 曾经的推断 | 结论 |
 |---|---|
-| **原样镜像（与原厂同字节，推荐先试）** | `https://github.com/JRMargin/tvbox-config/releases/download/src-v1/index.js.md5` |
-| catPaw（websiteBundle 包装版，备选） | `https://github.com/JRMargin/tvbox-config/releases/download/catpaw-v1/index.js.md5` |
+| 需要按社区约定包一层 `globalThis.websiteBundle` 才能被 App 执行 | **已证伪**。`catpaw/` 目录即该版本，与失败无关；根目录原样版补齐配置后即可加载。该目录保留作备选，不必使用 |
+| 走 Release 附件就能解决「源加载失败」 | **只解决了一半**。附件确实绕开了压缩，但缺 `index.config.js` 时依旧失败；两者同时满足才可加载 |
 
-- `src-v1` 附件：`index.js` 6643598 B（md5 `3bd449f0fe7221060113d785076c73f7`）、`index.js.md5` 32 B
-- `catpaw-v1` 附件：`index.js` 6874383 B（md5 `902d95fce3e174f82d408818269a43ca`）、`index.js.md5` 32 B
-- 实测响应头：`content-type: application/octet-stream`、`content-length` 正确、无 `content-encoding`
-- App 会按 `.md5` 去掉后缀去取同名 `index.js`，两个附件名正好对应
+### 8. MiraPlay 配置快照（`miraplay.json`）
 
-## iOS（MiraPlay）专用 spider 镜像
+`miraplay.json` 是从 spider 的 `/config` 接口原样抓下来的配置（2026-11-23 快照），与源站输出字节级一致（md5 `59f1ed9ad271e88e2056f838eb141223`，21162 B）：
 
-原链接 `http://wexfnw:wexfnw@cat.999888123.xyz/index.js.md5` 的 `.md5` 只是 32 字节校验值（`3bd449f0fe7221060113d785076c73f7`），真正的资源是同目录的 `index.js`——**CatVodSpider 的 iOS 版 spider**（6.6 MB，启动后监听 `127.0.0.1:9988`，方案标识 `js2p://_WEB_`）。已原样镜像到本仓库根目录，文件名与校验方式保持不变，可直接替换原链接：
-
-| 用途 | 地址 |
-|---|---|
-| **猫爪（catPaw）源（MiraPlay 输入框只认这个）** | `https://ghfast.top/https://raw.githubusercontent.com/JRMargin/tvbox-config/main/index.js.md5` |
-| 备用（ghfast 不通时） | `https://gh-proxy.com/https://raw.githubusercontent.com/JRMargin/tvbox-config/main/index.js.md5` |
-| 直连 raw（国内网络常拉不动 6.6 MB） | `https://raw.githubusercontent.com/JRMargin/tvbox-config/main/index.js.md5` |
-
-- 猫爪（catPaw）源只接受以 `.js.md5` 结尾的地址（`https://域名/.../index.js.md5`，或 `github://<PAT>@github.com/<user>/<repo>/<branch>/index.js.md5`）。**填 JSON（如 `miraplay.json`）会直接报「格式错误，请输入catPawopen源」**；社区里 `https://ghfast.top/https://raw.githubusercontent.com/.../index.js.md5` 这类带加速前缀的嵌套写法是可用的，若某条加速地址被判格式错误，换下面这条纯 raw 即可。
-- **为什么不要用 raw 直连**：2026-11-23 在深圳家用网络实测，raw 下 6643598 B 的 `index.js` 多次 120 s 超时未完成，App 端表现为「源加载失败」；`.md5` 只有 32 B 所以能秒回，问题只在大文件。同一时间 ghfast 9.7 s 拉完（≈668 KB/s）、gh-proxy 18.2 s（≈356 KB/s），三者 md5 均为 `3bd449f0fe7221060113d785076c73f7`。
-- jsDelivr 对该文件也不可用：`.md5` 返回 **403 Forbidden**（jsDelivr 会拦 `.md5`、`.jar` 这类后缀），只有 `index.js` 本体能取到（且实测仅 70 KB/s）。
-- 另外实测不可用：`cdn.statically.io`、`raw.githack.com`、`github.moeyy.xyz` 均连接超时；`ghproxy.net` 虽能取全（6643598 B）但仅 47 KB/s、耗时 138 s，不推荐。
-- 校验值 `3bd449f0fe7221060113d785076c73f7`，体积 6643598 B，镜像文件与源站 md5 完全一致。
-- 实测（云主机 Node 22 跑镜像文件）：`CatVodSpiderios listening on http://127.0.0.1:9988`。
-
-注意事项：
-
-- 这份 js 只是 **spider 引擎**，本身不含站点清单；站点与网盘分享是它运行时远程拉取的（`upload.baicanuc.cn/ossfiles/1768320816/` 下的 `ioswex.txt`、`guangya.txt`、`api.txt`、`quarknew.txt`、`yidongnew.txt`、`baidunew.txt`，以及 `oss4liview.moji.com/...jpg` 站点配置）。这些文件仍在原厂商服务器上，本镜像不改变其归属，所以“专属”只到 spider 这一层。
-- 2026-11-23 实测：站点配置 `oss4liview.moji.com/thd_file/2026/10/27/08d97aca7cc67966a19d05d5ba3ff725.jpg` 返回 503，spider 日志为 `[RemoteWexConfig] site config failed: timeout of 10000ms exceeded`——**原链接当前也拿不到站点数据**，不是本地网络问题。
-- 该 js 只有在文件名以 `index.js` 结尾时才会自启（内部用 `process.argv[1]` 做正则匹配），改名会静默退出、无任何输出。
-- jsDelivr 拉这个 6.6 MB 文件多次连接中断，未列入推荐地址。
-
-### MiraPlay（catPaw）兼容源：`catpaw/index.js.md5`
-
-根目录那份 `index.js` 是**自启型 Node 服务端**（靠 `process.argv[1]` 匹配文件名启动）。App 侧的表现是：下载成功、md5 校验也做了，但随后「源加载失败」——因为它拿不到任何可执行入口。
-
-对照社区里标为 MiraPlay 可用的「豆儿」源（`ghfast.top/.../douer/index.js.md5`，9.4 MB）发现差别在入口约定：它把整包代码包进 `globalThis.websiteBundle = function(){ return "(function(){const exports={};const module={exports}; <code> })();" }`，由 App 取值后自己 eval。我们这份没有 `websiteBundle`（全文 0 次命中），只有 `catServerFactory`（3 次）和 `process.argv` 自启。
-
-据此做了 `catpaw/` 版本，未改任何 spider 逻辑：
-
-- 外层按同一约定提供 `globalThis.websiteBundle`，返回一个 IIFE 字符串，内部补齐 `const exports = {}; const module = { exports };`。
-- 把自启守卫 `MTr()&&Rtt().catch(...)` 改成直接 `Rtt().catch(...)`（原守卫要求 `process.argv[1]` 以 `index.js` 结尾，在 App 的 eval 环境里永远不成立）。
-- 其余字节全部保留；md5 重新计算。
-
-| 用途 | 地址 |
-|---|---|
-| **MiraPlay / catPaw 源（推荐）** | `https://ghfast.top/https://raw.githubusercontent.com/JRMargin/tvbox-config/main/catpaw/index.js.md5` |
-| 直连 raw（实测 135.8 s，慢） | `https://raw.githubusercontent.com/JRMargin/tvbox-config/main/catpaw/index.js.md5` |
-
-- md5 `902d95fce3e174f82d408818269a43ca`，体积 6874383 B；raw 与 ghfast 回读 md5 一致，ghfast 9.5 s 下完，raw 135.8 s。
-- 模拟 App 行为验证（`eval(websiteBundle())` 后 eval 返回值）：1 s 内 `/health` 返回 `{"ok":true,"name":"CatVodSpiderios"}`，`/config` 返回 21162 B、97 个站点，与原快照逐项比对**仅端口字段不同**（`danmuSearchUrl` 里的 9987/9988）。
-- 该版本仅适配「先取值再 eval」的运行时；如果某个壳是自己 `require`/执行文件的形式启动，仍用根目录那份 `index.js`。
-
-### MiraPlay 配置快照（`miraplay.json`）
-
-`miraplay.json` 是从上面那份 spider 的 `/config` 接口原样抓下来的配置（2026-11-23 快照），与源站输出**字节级一致**（md5 `59f1ed9ad271e88e2056f838eb141223`，21162 B），未做任何改写：
-
-> **注意：这份 JSON 不能填进 MiraPlay 的「猫爪源」输入框**——那个位置只接受 `.js.md5` 形式的 catPaw 源，填 JSON 会报「格式错误，请输入catPawopen源」。`miraplay.json` 仅供能直接吃 TVBox 系 JSON 的壳读取/查看站点清单用。
+> **不能填进 MiraPlay 的「猫爪源」输入框**——那个位置只接受 `.js.md5` 形式的 catPaw 源，填 JSON 会报「格式错误，请输入catPawopen源」。此文件仅供能直接吃 TVBox 系 JSON 的壳读取/查看站点清单。
 
 - 走加速：`https://gh-proxy.com/https://raw.githubusercontent.com/JRMargin/tvbox-config/main/miraplay.json`
 - 直连：`https://raw.githubusercontent.com/JRMargin/tvbox-config/main/miraplay.json`
@@ -104,9 +114,37 @@ Release 附件以 `application/octet-stream` 下载，`Content-Encoding` 为空�
 - **必须与同一份 spider 配套**。配置里 `api` 是本地相对路径（`/spider/<key>/3`），由 spider 在本机注册成 `/spider/<key>/<type>/home|category|detail|search|play` 这类 POST 路由；只挂配置、不加载 `index.js`，站点一个都出不来。
 - 实测：`POST /spider/wogg/3/home` 返回 `HTTP 200 42180B`，`class` 里是「玩偶电影／玩偶剧集」等真实分类；同批测试里 `douban` 的 home 返回 403（该站上游拒采，非链路问题）。
 - 这是**冻结快照**：源站站点会变（其中一条站名带当天日期，快照里固定为 `日期:20261123`），要最新列表就得重新从 `/config` 抓。
-- 站点内容仍依赖厂商远程资源（`upload.baicanuc.cn` 系列 txt 与 `oss4liview.moji.com` 的站点配置，后者 2026-11-23 为 503），本仓库不做二次托管。
 
-## 关于 spider.jar 的分发（重要）
+### 9. 本仓库根目录文件清单（MiraPlay 相关）
+
+| 文件 | 说明 |
+|---|---|
+| `index.js` / `index.js.md5` | 猫爪源引擎，必需 |
+| `index.config.js` / `index.config.js.md5` | 猫爪源配置，**必需**，漏了必失败 |
+| `miraplay.json` | 站点快照，仅供 TVBox 系壳读 |
+| `catpaw/index.js` / `.md5` | `websiteBundle` 包装版，备选，可忽略 |
+
+---
+
+## 二、TVBox / 影视仓 配置
+
+一份配置同时适配 **TVBox** 与 **影视仓**（FongMi 系）空壳。仅使用跨壳通用的 csp（type3）与苹果 CMS（type1/type0），已剔除 `.py`、drpy、本地 GoProxy 等非通用源。
+
+当前共 **107 个站点**：type3（csp）97 个、type1 苹果 CMS 9 个、type0 1 个。
+
+### 订阅地址（按网络情况选一条）
+
+| 配置 | 适用情况 | 地址 |
+|---|---|---|
+| `config.json` | 能直连 GitHub 的网络（raw，spider 也走 raw） | `https://raw.githubusercontent.com/JRMargin/tvbox-config/main/config.json` |
+| `config.json`（jsDelivr） | 配置走 CDN 加速，但 spider 仍走 raw | `https://cdn.jsdelivr.net/gh/JRMargin/tvbox-config@main/config.json` |
+| `config-cdn.json`（推荐） | 电视直连 raw 不稳；spider 走 gh-proxy 加速 | `https://gh-proxy.com/https://raw.githubusercontent.com/JRMargin/tvbox-config/main/config-cdn.json` |
+| `config-cdn.json`（jsDelivr） | 同上，配置文件本身走 CDN | `https://cdn.jsdelivr.net/gh/JRMargin/tvbox-config@main/config-cdn.json` |
+| `config-md5.json` | 壳要求 spider 带 md5 校验才加载 | `https://gh-proxy.com/https://raw.githubusercontent.com/JRMargin/tvbox-config/main/config-md5.json` |
+
+> 三个配置文件的 107 个站点完全相同，**唯一区别是 `spider` 字段**。
+
+### 关于 spider.jar 的分发（重要）
 
 97 个 csp 源（网盘 4K、网盘直连、网盘搜索、动漫、短剧、磁力等）全部依赖 `spider.jar` 加载成功；jar 加载失败时，只剩 10 个不依赖 jar 的苹果 CMS 能返回数据。
 
@@ -118,14 +156,15 @@ Release 附件以 `application/octet-stream` 下载，`Content-Encoding` 为空�
   - `https://gh-proxy.com/https://raw.githubusercontent.com/JRMargin/tvbox-config/main/spider.jar`
   - `https://ghfast.top/https://raw.githubusercontent.com/JRMargin/tvbox-config/main/spider.jar`
 - jar 指纹：大小 **1909012 B**，md5 **`9f7227651023177d2a036830180add15`**，zip 内含 `classes.dex`。`config-md5.json` 即按此 md5 校验。
+- jar 走加速（会压缩）对 TVBox 系壳没问题——它们能解压；**这条经验不要套用到 MiraPlay 的猫爪源**，那个壳不吃压缩。
 
-## 导入方法
+### 导入方法
 
 1. 打开 TVBox / 影视仓，进入「设置」→「配置地址」（影视仓为「订阅」）。
 2. 粘贴上面任一地址，确定后等待加载，返回首页即可看到全部站点。
 3. 更换地址后必须**重新拉取配置**才会生效；必要时清除 App 数据后再导入。
 
-## 故障排查：首页空白 / 搜索只有几个站点有结果
+### 故障排查：首页空白 / 搜索只有几个站点有结果
 
 这两个现象是同一个根因：**配置加载成功了，但 `spider.jar` 没加载上**，于是 97 个 csp 源全哑，只有 10 个苹果 CMS 有返回。
 
@@ -139,7 +178,7 @@ Release 附件以 `application/octet-stream` 下载，`Content-Encoding` 为空�
 3. **粘贴检查**：订阅地址首尾不要带空格或换行。
 4. **兜底方案（本地 jar）**：若所有远程地址都不通，把 `spider.jar` 放到电视本地存储，配置里的 `spider` 改成本地路径，可完全绕开网络问题。
 
-## 网盘播放与 Cookie
+### 网盘播放与 Cookie
 
 - 网盘 4K 聚合源（玩偶、快映等）点开即可播放，无需登录。
 - 「阿里/夸克/UC/百度/迅雷」等网盘直连源，需在 App 的「网盘及弹幕配置」中填入你自己的凭证：
@@ -147,7 +186,7 @@ Release 附件以 `application/octet-stream` 下载，`Content-Encoding` 为空�
   - 阿里：扫码登录或填 32 位 token。
   Cookie 是你的私人凭证，只保存在本机，本配置不内置任何账号。
 
-## 源清单（共 107 个站点）
+### 源清单（共 107 个站点）
 
 | 类别 | 数量 |
 |---|---|
@@ -165,8 +204,22 @@ Release 附件以 `application/octet-stream` 下载，`Content-Encoding` 为空�
 
 另含解析接口 29 个、直播 2 条，以及去广告/嗅探规则。
 
+---
+
+## 三、变更记录
+
+**2026-11-23** — MiraPlay 猫爪源修复并定案：
+
+- 查明「下载完成 → md5 校验通过 → 源加载失败」的真因：缺 `index.config.js` 与 `index.config.js.md5`。补齐后 iPhone 实测加载成功。
+- 补齐文件到仓库根目录与 Release `src-v1`（四附件：`index.js`、`index.js.md5`、`index.config.js`、`index.config.js.md5`）。
+- 修正此前两处误判：`websiteBundle` 包装非必需（`catpaw/` 降级为备选）；Release 附件只能绕开压缩，不能替代配置文件。
+- 解决速度问题：raw/ghfast 等压缩托管一律不可用，改由 gh-proxy 代理 Release 附件，6.6 MB 从 63 s 降到 3.4 s。
+- 补记一条 TVBox 侧经验：jar 可走压缩加速，MiraPlay 猫爪源不行。
+
+---
+
 ## 说明
 
 - 所有接口均经过联网实测，失效域名已剔除；公开资源站域名可能随时变动，后续可重新检测更新。
-- 第三方加速（gh-proxy、ghfast、jsDelivr）为公共服务，可用性与稳定性不由本仓库控制；若失效，可回退到 raw 地址或本地 jar。
+- 第三方加速（gh-proxy、ghfast、jsDelivr）为公共服务，可用性与稳定性不由本仓库控制；若失效，可回退到 GitHub Release 直链或本地服务。
 - 公开资源仅供个人学习，请自行确认当地版权与合规要求，遵守相关法律法规。
